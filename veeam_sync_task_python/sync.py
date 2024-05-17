@@ -1,7 +1,6 @@
 # time provides various time-related functions
 # shutil module offers a number of high-level operations on files and collections of files
 # os provides a portable way of using operating system dependent functionality.
-# sys provides access to some variables used or maintained by the interpreter and to functions that interact strongly with the interpreter
 # filecmp defines functions to compare files and directories, with various optional time/correctness trade-offs
 # Only replicate from source -> replica (paths defined by user)
 # Sync periodically (period defined by user)
@@ -12,13 +11,8 @@ import os
 import filecmp
 import shutil
 import logging
+import sched
 
-# Access logging functionality
-logger = logging.getLogger(__name__)
-# Set logging level to debug
-logger.setLevel(logging.DEBUG)
-# Start the log file. Going to overwrite if there is already a log file
-logging.basicConfig(filename='folder_sync.log', encoding='utf-8', filemode='w', level=logging.DEBUG)
 
 def delete_leftover(cmp_obj):
     replica_path = cmp_obj.right
@@ -52,10 +46,11 @@ def copy_new(cmp_obj):
             # If its a file -> copy it
             if os.path.isfile(copy_source_path):
                 shutil.copy2(copy_source_path, r_path)
-                print("Created copy from [",copy_source_path,"] in [", full_replica_path,"]")
-                logger.debug("Created copy from [%s] in [%s]", copy_source_path,full_replica_path)
+                print("Created a file copy from [",copy_source_path,"] in [", full_replica_path,"]")
+                logger.debug("Created a file copy from [%s] in [%s]", copy_source_path,full_replica_path)
             # If its a directory, and it exists, delete it
             elif os.path.isdir(copy_source_path) and os.path.exists(copy_source_path):
+                # Just to be sure?
                 if(os.path.exists(full_replica_path)):
                     os.remove(full_replica_path)
 
@@ -83,12 +78,8 @@ def check_difs(cmp_obj):
 
             # Update the replica
             shutil.copy2(copy_source_path, r_path)
-            print("Updated copy in [",r_path,"\\",name,"]")
-            logger.debug("Updated copy in [%s\\%s]", r_path,name)
-
-        # Get a new comparison object (we might've added more files/folders)
-        cmp_obj = filecmp.dircmp(s_path, r_path)
-        sub_dirs = cmp_obj.subdirs
+            print("Synced file in [",r_path,"\\",name,"]")
+            logger.debug("Synced file in [%s\\%s]", r_path,name)
 
         # Go through all the sub folders and check their differences
         for sub_dcmp in sub_dirs.values():
@@ -121,6 +112,23 @@ while True:
         break
 
 while True:
+    log_file_path = input("Please enter where you want the log file to be saved to: ")
+    log_file_path_exists = os.path.isdir(log_file_path)
+
+    if not log_file_path_exists:
+        print("Please enter a valid path.")
+        continue
+    else:
+        log_file_path = os.path.join(log_file_path + "\\folder_sync.log")
+        # Access logging functionality
+        logger = logging.getLogger(__name__)
+        # Set logging level to debug
+        logger.setLevel(logging.DEBUG)
+        # Start the log file. Going to overwrite if there is already a log file
+        logging.basicConfig(filename=log_file_path, encoding='utf-8', filemode='w', level=logging.DEBUG)
+        break
+
+while True:
     try:
         sync_interval = int(input("Please enter the synchronization interval in minutes: "))
     except ValueError:
@@ -134,4 +142,3 @@ while(True):
     sync_dirs(source_path,replica_path)
     sync_interval_seconds = sync_interval * 60
     time.sleep(sync_interval_seconds)
-
